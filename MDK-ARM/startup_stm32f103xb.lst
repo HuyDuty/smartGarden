@@ -474,12 +474,12 @@ ARM Macro Assembler    Page 8
               00000200 
               00000000 
 Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M3 --apcs=interw
-ork --depend=dht11\startup_stm32f103xb.d -odht11\startup_stm32f103xb.o -I.\RTE\
-_dht11 -IC:\Users\LENOVO\AppData\Local\Arm\Packs\ARM\CMSIS\5.9.0\CMSIS\Core\Inc
-lude -IC:\Users\LENOVO\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.4.0\Device\
-Include --predefine="__UVISION_VERSION SETA 533" --predefine="_RTE_ SETA 1" --p
-redefine="STM32F10X_MD SETA 1" --predefine="_RTE_ SETA 1" --list=startup_stm32f
-103xb.lst startup_stm32f103xb.s
+ork --depend=cubemx\startup_stm32f103xb.d -ocubemx\startup_stm32f103xb.o -I.\RT
+E\_cubeMX -IC:\Users\LENOVO\AppData\Local\Arm\Packs\ARM\CMSIS\5.9.0\CMSIS\Core\
+Include -IC:\Users\LENOVO\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.4.0\Devi
+ce\Include --predefine="__UVISION_VERSION SETA 533" --predefine="_RTE_ SETA 1" 
+--predefine="STM32F10X_MD SETA 1" --predefine="_RTE_ SETA 1" --list=startup_stm
+32f103xb.lst startup_stm32f103xb.s
 
 
 
