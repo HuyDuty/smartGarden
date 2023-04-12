@@ -96,7 +96,7 @@ void loop() { // run over and over
         if(Firebase.getString(firebaseData, path + "/timeoutCanopy"))
           timeOutDevice[3] = firebaseData.stringData();
 
-        results[0] = dataControlDevice.substring(0, 1) == "0" ? "0" : pumpSpeed;
+        results[0] = dataControlDevice.substring(0, 1) == "0" ? "0" : "1";
         results[1] = dataControlDevice.substring(1, 2) == "0" ? "0" : "1";
         results[2] = dataControlDevice.substring(2, 3) == "0" ? "0" : "1";
         results[3] = dataControlDevice.substring(3, 4) == "0" ? "0" : "1";
@@ -119,24 +119,27 @@ void loop() { // run over and over
         }
         Serial.println(String(millis()) + " " + String(timeOut[0]) + " " + String(timeOut[1]) + " " + String(timeOut[2]) + " " + String(timeOut[3]));        
         if((signed long int)(millis()) - timeOut[0] >= 0){
-          results[0] = pumpSpeed;
+          results[0] = "0";
+          Firebase.setString(firebaseData, path + "/pumpSpeed", "1");
           timeOut[0] = 2147483647;
         }
         if((signed long int)(millis()) - timeOut[1] >= 0){
-          results[1] = "1";
+          results[1] = "0";
           timeOut[1] = 2147483647;
         }
         if((signed long int)(millis()) - timeOut[2] >= 0){
-          results[2] = "1";
+          results[2] = "0";
           timeOut[2] = 2147483647;
         }
         if((signed long int)(millis()) - timeOut[3] >= 0){
-          results[3] = "1";
+          results[3] = "0";
           timeOut[3] = 2147483647;
         }
         Serial.println("Tin hieu dong co gui cho STM32F103C8T6: ");
         dataControlDevice = results[0] + results[1] + results[2] + results[3];
         Firebase.setString(firebaseData, path + "/TINHIEUDONGCO", dataControlDevice);
+        if(results[0] == "1")
+          dataControlDevice = pumpSpeed + dataControlDevice.substring(1, 4);  
         Serial.println(dataControlDevice + "2");
         Serial1.println(dataControlDevice + "2");
       }
