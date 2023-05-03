@@ -5,8 +5,8 @@
 
 #define FIREBASE_HOST "vuon-thong-minh-6868-default-rtdb.firebaseio.com/"//may chu firebase     
 #define FIREBASE_AUTH "AIzaSyCs9ay2VqXCBAvpJDGPc9SHIRp_cG8_fvc"//ma xac thuc firebase         
-#define WIFI_SSID "TP-LINK_7942"//id wifi                                  
-#define WIFI_PASSWORD "02548524"//password wifi  
+#define WIFI_SSID "Camvao!!!"//id wifi                                  
+#define WIFI_PASSWORD "22112001"//password wifi  
         
 FirebaseData firebaseData;//khai bao doi tuong firebase
 WiFiUDP ntpUDP;//doi tuong giao thuc UDP
@@ -14,8 +14,10 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org");//doi tuong may khach NTPClient
 
 String path = "/";//khai bao bien duong dan
 String chuoiNhanDuoc, timeNow, hours, minutes, dataSensor, dataControlDevice, dataMode;
-String timeOutDevice[4], results[4], pumpSpeed, arrResults;
+String timeOutDevice[4], results[4], pumpSpeed;//hen gio tat, trang thai dong co, toc do bom, 
+String thresholdLight = "0000", thresholdSoilMosture = "0000", thresholdTemp = "0000";//nguong gia tri
 signed long int timeOut[4];//khai bao bien tam thoi gian
+int upperThreshold[3], lowerThreshold[3];//nguong gia tri
 
 void setup() {
   // Khoi tao cac cong noi tiep
@@ -68,7 +70,7 @@ void loop() { // run over and over
       Firebase.setString(firebaseData, path + "/DULIEUCAMBIEN", dataSensor); 
       if(Firebase.getString(firebaseData, path + "/CHEDO"))
         dataMode = firebaseData.stringData();   
-      if(dataMode == "1" || dataMode == "3"){
+      if(dataMode == "1"){
         dataControlDevice = chuoiNhanDuoc.substring(10, 14);
         if(dataControlDevice.substring(0, 1) != "0"){
           Firebase.setString(firebaseData, path + "/pumpSpeed", dataControlDevice.substring(0, 1));
@@ -82,7 +84,7 @@ void loop() { // run over and over
         Serial.println(dataMode);
         Serial1.println(dataMode);
       }
-      else{
+      else if(dataMode == "2"){
         if(Firebase.getString(firebaseData, path + "/TINHIEUDONGCO"))
           dataControlDevice = firebaseData.stringData();
         if(Firebase.getString(firebaseData, path + "/pumpSpeed"))
@@ -120,28 +122,42 @@ void loop() { // run over and over
         Serial.println(String(millis()) + " " + String(timeOut[0]) + " " + String(timeOut[1]) + " " + String(timeOut[2]) + " " + String(timeOut[3]));        
         if((signed long int)(millis()) - timeOut[0] >= 0){
           results[0] = "0";
-          Firebase.setString(firebaseData, path + "/pumpSpeed", "1");
+          Firebase.setString(firebaseData, path + "/TINHIEUDONGCO", results[0] + results[1] + results[2] + results[3]);
           timeOut[0] = 2147483647;
         }
         if((signed long int)(millis()) - timeOut[1] >= 0){
           results[1] = "0";
+          Firebase.setString(firebaseData, path + "/TINHIEUDONGCO", results[0] + results[1] + results[2] + results[3]);
           timeOut[1] = 2147483647;
         }
         if((signed long int)(millis()) - timeOut[2] >= 0){
           results[2] = "0";
+          Firebase.setString(firebaseData, path + "/TINHIEUDONGCO", results[0] + results[1] + results[2] + results[3]);
           timeOut[2] = 2147483647;
         }
         if((signed long int)(millis()) - timeOut[3] >= 0){
           results[3] = "0";
+          Firebase.setString(firebaseData, path + "/TINHIEUDONGCO", results[0] + results[1] + results[2] + results[3]);
           timeOut[3] = 2147483647;
         }
         Serial.println("Tin hieu dong co gui cho STM32F103C8T6: ");
         dataControlDevice = results[0] + results[1] + results[2] + results[3];
-        Firebase.setString(firebaseData, path + "/TINHIEUDONGCO", dataControlDevice);
+        
         if(results[0] == "1")
           dataControlDevice = pumpSpeed + dataControlDevice.substring(1, 4);  
-        Serial.println(dataControlDevice + "2");
-        Serial1.println(dataControlDevice + "2");
+        Serial.println(dataControlDevice + dataMode);
+        Serial1.println(dataControlDevice + dataMode);
+      }
+      else{//che do 3
+        if(Firebase.getString(firebaseData, path + "/thresholdLight") && firebaseData.stringData() != thresholdLight)
+          thresholdLight = firebaseData.stringData();
+        if(Firebase.getString(firebaseData, path + "/thresholdSoilMosture") && firebaseData.stringData() != thresholdSoilMosture)
+          thresholdSoilMosture = firebaseData.stringData();
+        if(Firebase.getString(firebaseData, path + "/thresholdTemp") && firebaseData.stringData() != thresholdTemp)
+          thresholdTemp = firebaseData.stringData();
+        Serial.println("Tin hieu dong co gui cho STM32F103C8T6: ");  
+        Serial.println(thresholdLight + thresholdSoilMosture + thresholdTemp + dataMode);
+        Serial1.println(thresholdLight + thresholdSoilMosture + thresholdTemp + dataMode);  
       }
       chuoiNhanDuoc = "";
     }

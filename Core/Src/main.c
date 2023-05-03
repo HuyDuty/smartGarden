@@ -60,6 +60,8 @@ char stringR[18], arrData[20];
 int id = -1;
 /* VARIABLES SAVE RTC */
 char rtc;
+/* VARIABLES SAVE VALUE SET FOR MODE OF AUTO */
+int lowerThreshold[3], upperThreshold[3];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -97,65 +99,11 @@ void printValueSensor();//print value sensor to LCD
 void controlDevice();//check and control device
 void selectChannelADC(int selectMode);//select ADC-channel to use
 void setValueControl();//control device according to the value setting  
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);//call to external interrupt
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);//call to UART interrupt
 int convertToInt(char c);//convert char to int
 char convertToChar(int i);//convert int to char
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-  if (GPIO_Pin == pumpControl_Pin){
-    HAL_Delay(20);//chong rung phim
-    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0)
-      statusPump = statusPump == 3 ? 0 : statusPump + 1;
-  }
-  else if (GPIO_Pin == fanControl_Pin){
-    HAL_Delay(20);//chong rung phim
-    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0)
-        statusFan = ~statusFan;
-  }
 
-  else if (GPIO_Pin == ledControl_Pin){
-    HAL_Delay(20);//chong rung phim
-    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 0)
-        statusLed = ~statusLed;
-  }
-
-  else if (GPIO_Pin == coverControl_Pin){
-    HAL_Delay(20);//chong rung phim
-    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 0)
-        statusCover = ~statusCover;
-  }
-
-}
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-  if(charR != 13){
-    stringR[++id] = charR;
-  }
-  if(charR == 13){
-    if(stringR[id] == '!'){
-      rtc = stringR[id];
-    }
-    else if(stringR[id] == '1' || stringR[id] == '3')
-      mode = stringR[id];
-    else{
-      mode = '2';//che do cho phep dieu khien tu xa
-      statusPump = convertToInt(stringR[1]);
-      if(stringR[2] != convertToChar(statusFan))
-        statusFan = ~statusFan;
-      if(stringR[3] != convertToChar(statusLed))
-        statusLed = ~statusLed;
-      if(stringR[4] != convertToChar(pullOut))
-        statusCover = ~statusCover;
-    }
-    sprintf(arrData, "%d%d%d%d%d%d%d%d%c/%d%c%c%c \n", Temperature/10, Temperature%10, Humidity/10, Humidity%10,
-                                                  Soil/10, Soil%10, Light/10, Light%10, statusRain,
-                                                  statusPump, convertToChar(statusFan), convertToChar(statusLed), convertToChar(pullOut));
-    HAL_UART_Transmit(&huart1, (uint8_t*)&arrData, sizeof(arrData), 100);
-    for(int count = 0; count < sizeof(stringR); count++)
-      stringR[count] = NULL;
-    id = -1;
-  }
-  HAL_UART_Receive_IT(&huart1, (uint8_t*)&charR, 1);
-}
 /* USER CODE END 0 */
 
 /**
@@ -192,8 +140,6 @@ int main(void)
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   
-  HAL_UART_Receive_IT(&huart1,(uint8_t *)&charR,1);
-  HAL_UART_Transmit(&huart1, (uint8_t*)&"Hello World!", 13, 100);
   HAL_TIM_Base_Start(&htim2);
   lcdInit();
   lcdRowCol(1, 3);
@@ -209,6 +155,8 @@ int main(void)
   sprintf(format2, "%c%c  %c%c  %c %c  %c", 0x43, 0xFF, 0x25, 0xFF, 0x25, 0xFF, 0x25);
   lcdString(format2);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
+  HAL_UART_Receive_IT(&huart1,(uint8_t *)&charR,1);
+  HAL_UART_Transmit(&huart1, (uint8_t*)&"Hello World!", 13, 100);
   
   /* USER CODE END 2 */
 
@@ -219,6 +167,8 @@ int main(void)
 	  getValueDHT();
     getValueSoilRainLight();
     printValueSensor();
+    if(mode == '3')
+      setValueControl();
     controlDevice();
 		HAL_Delay(1200);
     /* USER CODE END WHILE */
@@ -725,7 +675,7 @@ void controlDevice(){
     __HAL_TIM_SetCompare(&htim4, TIM_CHANNEL_4, 99);//"manh"
   else
     __HAL_TIM_SetCompare(&htim4, TIM_CHANNEL_4, 0);
-  HAL_GPIO_WritePin(FAN_GPIO_Port, FAN_Pin, statusFan);
+  HAL_GPIO_WritePin(FAN_GPIO_Port, FAN_Pin, ~statusFan);
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, statusLed);
   if(statusCover){//man che hoat dong
     if(pullOut == 0){//man che keo ra
@@ -760,35 +710,96 @@ void selectChannelADC(int selectMode){
     Error_Handler();
   }
 }
-
+  
 void setValueControl(){
-  if(Temperature < 25 && Soil < 30)
-    statusPump = statusPump == 0 ? ~statusPump:statusPump;
-  if(Temperature > 35 || Soil > 70)
-    statusPump = statusPump != 0 ? ~statusPump:statusPump;
-  if(Temperature > 35 && Humidity > 50)
-    statusFan = statusFan == 0 ? ~statusFan:statusFan;
-  if(Temperature < 25 || Humidity < 30)
-    statusFan = statusFan != 0 ? ~statusFan:statusFan;
-  if(Temperature < 10 && Light < 10)
-    statusLed = statusLed == 0 ? ~statusLed:statusLed;
-  if(Temperature > 15 || Light > 20)
-    statusLed = statusLed != 0 ? ~statusLed:statusLed;
-  if((Temperature > 30 && Light > 80) || Light < 10 || statusRain == '1')
-    statusCover = pullOut == 0 ? ~statusCover:statusCover;
-  if((Light > 50 && Temperature < 25) || (Light > 50 && statusRain == '0'))
-    statusCover = pullOut != 0 ? ~statusCover:statusCover;
+//  if(statusRain == '0')
+//    statusCover = pullOut != 0 ? ~statusCover : statusCover;//khong che
+  if(Light > upperThreshold[0] && Temperature > upperThreshold[2]){
+    statusCover = pullOut == 0 ? ~statusCover : statusCover;//che
+    statusFan = statusFan == 0 ? ~statusFan : statusFan;//bat quat
+  }
+  if((Light < lowerThreshold[0] || Temperature < (upperThreshold[2] - 10)) && statusRain == '0'){
+    statusCover = pullOut != 0 ? ~statusCover : statusCover;//khong che
+    statusFan = statusFan != 0 ? ~statusFan : statusFan;//tat quat
+  }
+  if(statusRain == '1')
+    statusCover = pullOut == 0 ? ~statusCover : statusCover;//che
+  if(Soil < lowerThreshold[1] && statusPump == 0)
+    statusPump = 3;
+  if(Soil > upperThreshold[1] && statusPump != 0)
+    statusPump = 0;
+  if(Temperature < lowerThreshold[2])
+    statusLed = statusLed == 0 ? ~statusLed : statusLed;
+  if(Temperature > (lowerThreshold[2] + 5))
+    statusLed = statusLed != 0 ? ~statusLed : statusLed;  
 }
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if (GPIO_Pin == pumpControl_Pin){
+    HAL_Delay(20);//chong rung phim
+    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0)
+      statusPump = statusPump == 3 ? 0 : statusPump + 1;
+  }
+  else if (GPIO_Pin == fanControl_Pin){
+    HAL_Delay(20);//chong rung phim
+    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0)
+        statusFan = ~statusFan;
+  }
 
+  else if (GPIO_Pin == ledControl_Pin){
+    HAL_Delay(20);//chong rung phim
+    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 0)
+        statusLed = ~statusLed;
+  }
+
+  else if (GPIO_Pin == coverControl_Pin){
+    HAL_Delay(20);//chong rung phim
+    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 0)
+        statusCover = ~statusCover;
+  }
+}
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if(charR != 13){
+    stringR[++id] = charR;
+  }
+  if(charR == 13){
+    if(stringR[id] == '!'){
+      rtc = stringR[id];
+    }
+    else if(stringR[id] == '1')
+      mode = '1';//che do dieu khien bang phim nhan
+    else if(stringR[id] == '2'){
+      mode = '2';//che do cho phep dieu khien tu xa
+      statusPump = convertToInt(stringR[1]);
+      if(stringR[2] != convertToChar(statusFan))
+        statusFan = ~statusFan;
+      if(stringR[3] != convertToChar(statusLed))
+        statusLed = ~statusLed;
+      if(stringR[4] != convertToChar(pullOut))
+        statusCover = statusCover == 0 ? ~statusCover : statusCover;
+    }
+    else{
+      mode = '3';//che do dieu khien tu dong
+      lowerThreshold[0] = convertToInt(stringR[1]) * 10 + convertToInt(stringR[2]);//nguong anh sang duoi
+      upperThreshold[0] = convertToInt(stringR[3]) * 10 + convertToInt(stringR[4]);//nguong anh sang tren
+      lowerThreshold[1] = convertToInt(stringR[5]) * 10 + convertToInt(stringR[6]);//nguong do am dat duoi
+      upperThreshold[1] = convertToInt(stringR[7]) * 10 + convertToInt(stringR[8]);//nguong do am dat tren
+      lowerThreshold[2] = convertToInt(stringR[9]) * 10 + convertToInt(stringR[10]);//nguong nhiet do duoi
+      upperThreshold[2] = convertToInt(stringR[11]) * 10 + convertToInt(stringR[12]);//nguong nhiet do tren    
+    }
+    sprintf(arrData, "%d%d%d%d%d%d%d%d%c/%d%c%c%c \n", Temperature/10, Temperature%10, Humidity/10, Humidity%10,
+                                                  Soil/10, Soil%10, Light/10, Light%10, statusRain,
+                                                  statusPump, convertToChar(statusFan), convertToChar(statusLed), convertToChar(pullOut));
+    HAL_UART_Transmit(&huart1, (uint8_t*)&arrData, sizeof(arrData), 100);
+    for(int count = 0; count < sizeof(stringR); count++)
+      stringR[count] = NULL;
+    id = -1;
+  }
+  HAL_UART_Receive_IT(&huart1, (uint8_t*)&charR, 1);
+}
 int convertToInt(char c){
-  if(c == '0')
-    return 0;
-  else if(c == '1')
-    return 1;
-  else if(c == '2')
-    return 2;
-  else
-    return 3;
+  return (int)c - 48;
 }
 
 char convertToChar(int i){
@@ -797,6 +808,7 @@ char convertToChar(int i){
   else
     return '1';
 }
+
 /* USER CODE END 4 */
 
 /**
